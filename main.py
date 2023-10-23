@@ -2,8 +2,8 @@ import os
 
 import cadquery as cq
 
-debug = lambda *args, **kwargs: None
-show_object = lambda *args, **kwargs: None
+# debug = lambda *args, **kwargs: None
+# show_object = lambda *args, **kwargs: None
 
 # ================== PARAMETERS ==================
 # 3D printing basics
@@ -141,4 +141,4 @@ holder = (
 
 show_object(holder, "detergent-holder")
 
-cq.exporters.export(holder, "detergent-holder.stl")
+# cq.exporters.export(holder, "detergent-holder.stl")
