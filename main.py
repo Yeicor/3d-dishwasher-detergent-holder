@@ -2,70 +2,78 @@ import os
 
 import cadquery as cq
 
-# show_object = lambda *args, **kwargs: None
+debug = lambda *args, **kwargs: None
+show_object = lambda *args, **kwargs: None
 
 # ================== PARAMETERS ==================
 # 3D printing basics
 tol = 0.2  # Tolerance
 wall_min = 0.4  # Minimum wall width
-wall = wall_min * 3  # Recommended wall width
+wall = wall_min * 7  # Recommended width for most walls of this print
 eps = 1e-5  # A small number
 
 # Measurements of the rotating arm it will be attached to
-rotating_arm_size = cq.Vector(47, 60, 15)
+arm_size = cq.Vector(47, 60, 15)
 
-device_height = 40  # Total depth of the device to be attached to the rotating arm
-device_max_volume = 40  # In milliliters (== cm^3)
-device_volume_marks = [20, 30]  # In milliliters (== cm^3)
+holder_height = 40  # Total depth of the device to be attached to the rotating arm
+holder_max_volume = 40  # In milliliters (== cm^3)
+holder_volume_marks = [20, 30]  # In milliliters (== cm^3)
+
+connector_dimensions = cq.Vector(4, 1.5)
+connector_limit_depth = cq.Vector(4, 6)
+cross_pattern_hole_size = 1.5 if os.getenv('final_build') else 7  # 1.5 mm is SLOW but needed
 
 # ================== MODELLING ==================
 
 # Dishwasher arm
 dishwasher_arm = (
     cq.Workplane("XY")
-    .box(rotating_arm_size.x + 2, rotating_arm_size.y, rotating_arm_size.z, centered=(True, True, False))
+    .box(arm_size.x + 2, arm_size.y, arm_size.z, centered=(True, True, False))
     .edges("(>X or <X) and |Z")
-    .chamfer(rotating_arm_size.y / 2 - eps, 1)
+    .chamfer(arm_size.y / 2 - eps, 1)
     .edges("#Z and (not |X)")
     .fillet(3)
-    .translate((0, 0, device_height - rotating_arm_size.z))
-    .faces(">Z").circle(rotating_arm_size.x / 2 - 3).extrude(2)  # Top of the arm
+    .translate((0, 0, holder_height - arm_size.z))
+    .faces(">Z").circle(arm_size.x / 2 - 3).extrude(2)  # Top of the arm
     .edges("<<Z[2]").edges("<<X[2] and <<Y[2]").fillet(wall_min)  # Fillet the edges
 )
 debug(dishwasher_arm, "dishwasher-rotating-arm")
 
 # Liquid area
 # Compute the height of the base
-base_area_cm = rotating_arm_size.x * (rotating_arm_size.y - wall * 2) / 100
-base_height_cm = device_max_volume / base_area_cm
+base_area_cm = arm_size.x * (arm_size.y - wall * 2) / 100
+base_height_cm = holder_max_volume / base_area_cm
 base_height = base_height_cm * 10
-device_volume_marks_height = [h * base_height_cm / device_max_volume * 10 for h in device_volume_marks]
+device_volume_marks_height = [h * base_height_cm / holder_max_volume * 10 for h in holder_volume_marks]
 liquid_area = (  # Detergent holder
     cq.Workplane("XY")
-    .box(rotating_arm_size.x, rotating_arm_size.y - wall * 2, base_height, centered=(True, True, False))
+    .box(arm_size.x, arm_size.y - wall * 2, base_height, centered=(True, True, False))
 )
 show_object(liquid_area, "liquid-area", {"color": (0.0, 0.0, 1.0), "alpha": 0.5})
 
 # Detergent holder
-connector_dimensions = cq.Vector(3 * wall, 1 * wall)
-connector_limit_depth = cq.Vector(4 * wall, 6 * wall)
 holder = (
     # Create a basic cup
     cq.Workplane("XY")
-    .box(rotating_arm_size.x, rotating_arm_size.y - 2 * wall, base_height, centered=(True, True, False))
+    .box(arm_size.x, arm_size.y - 2 * wall, base_height, centered=(True, True, False))
     .faces(">Z")
     .shell(wall, kind="intersection")
+    # Smaller bottom layer (2 * wall_min instead of wall)
+    .faces("<Z")
+    .workplane()
+    .rect(arm_size.x + 2 * wall, arm_size.y, centered=True)
+    .cutBlind(-(wall - wall_min * 2))
     # Add the 4 corner sticks for the connection to the rotating arm
     .faces(">Z")
     .workplane()
-    .rect(rotating_arm_size.x + wall, rotating_arm_size.y - 2 * wall + wall, centered=True, forConstruction=True)
+    .rect(arm_size.x + wall, arm_size.y - 2 * wall + wall, centered=True, forConstruction=True)
     .vertices()
     .rect(wall, wall, centered=True)
-    .extrude(device_height - base_height + connector_dimensions.x / 2)
+    .extrude(holder_height - base_height + connector_dimensions.x / 2)
     # Add connection to the rotating arm
     .faces(">Z")
     .workplane()
-    .rect(rotating_arm_size.x - connector_dimensions.y, rotating_arm_size.y - 2 * wall + wall,
+    .rect(arm_size.x - connector_dimensions.y, arm_size.y - 2 * wall + wall,
           centered=True, forConstruction=True)
     .vertices()
     .rect(connector_dimensions.y, wall)
@@ -74,8 +82,8 @@ holder = (
     .edges("|Y").edges("<<X[2] or >>X[2]").chamfer(connector_dimensions.y - eps, connector_dimensions.x / 2 - eps)
     # Add a bottom limit to the connection
     .faces(">Z")
-    .workplane(offset=-rotating_arm_size.z - connector_dimensions.x / 2)
-    .rect(rotating_arm_size.x - connector_limit_depth.x, rotating_arm_size.y - 2 * wall + wall,
+    .workplane(offset=-arm_size.z - connector_dimensions.x / 2)
+    .rect(arm_size.x - connector_limit_depth.x, arm_size.y - 2 * wall + wall,
           centered=True, forConstruction=True)
     .vertices()
     .rect(connector_limit_depth.x, wall)
@@ -86,20 +94,20 @@ holder = (
 )
 
 # Add the volume marks
+volume_marks_size = min(4.0, wall * 2 - eps)
 for h in device_volume_marks_height:
     holder = (
         holder.faces(">>Z[1]")
         .workplane(offset=h, centerOption="CenterOfMass")
-        .rect(rotating_arm_size.x, rotating_arm_size.y - 2 * wall, centered=True, forConstruction=True)
+        .rect(arm_size.x, arm_size.y - 2 * wall, centered=True, forConstruction=True)
         .vertices()
-        .rect(wall * 2 - eps, wall * 2 - eps)
+        .rect(volume_marks_size, volume_marks_size)
         .extrude(-999, taper=30)
     )
 
-cross_pattern_hole_size = 1 if os.getenv('final_build') else base_height / 2 - eps  # 1 mm is SLOW but needed
 holder = (
     holder
-    # "Final" filleting for nicer look
+    # "Final" filleting (before holes) for nicer look
     .edges("|Z and ((>X or <X) and (>Y or <Y))").fillet(wall - eps)
     .edges("<Z").fillet(wall - eps)
     # Apply the cross-pattern to the cup to let pressurized water flow through but not the detergent
@@ -107,30 +115,30 @@ holder = (
     .faces("<Z")
     .workplane()
     .rarray(cross_pattern_hole_size * 2, cross_pattern_hole_size * 2,
-            int(rotating_arm_size.x / (cross_pattern_hole_size * 2)),
-            int((rotating_arm_size.y - wall * 2) / (cross_pattern_hole_size * 2)))
-    .rect(cross_pattern_hole_size, cross_pattern_hole_size, centered=True)
-    .cutBlind(-wall)
+            int(arm_size.x / (cross_pattern_hole_size * 2)),
+            int((arm_size.y - wall * 2) / (cross_pattern_hole_size * 2)))
+    .rect(cross_pattern_hole_size + 2 * tol, cross_pattern_hole_size + 2 * tol, centered=True)
+    .cutBlind(-2 * wall_min)
     # - On the left and right sides
     .faces("<X")
     .workplane()
-    .transformed(offset=(0, base_height / 2 + wall))
+    .transformed(offset=(0, (base_height + wall) / 2))
     .rarray(cross_pattern_hole_size * 2, cross_pattern_hole_size * 2,
-            int((rotating_arm_size.y - wall * 2) / (cross_pattern_hole_size * 2)),
+            int((arm_size.y - wall * 2 - volume_marks_size * 2) / (cross_pattern_hole_size * 2)),
             int(base_height / (cross_pattern_hole_size * 2)))
-    .rect(cross_pattern_hole_size, cross_pattern_hole_size, centered=True)
+    .rect(cross_pattern_hole_size + 2 * tol, cross_pattern_hole_size + 2 * tol, centered=True)
     .cutThruAll()
     # - On the front and back sides
     .faces("<Y")
     .workplane()
-    .transformed(offset=(rotating_arm_size.x / 2 + wall, 0))
+    .transformed(offset=(arm_size.x / 2 + wall, 0))
     .rarray(cross_pattern_hole_size * 2, cross_pattern_hole_size * 2,
-            int(rotating_arm_size.x / (cross_pattern_hole_size * 2)),
+            int((arm_size.x - volume_marks_size * 2) / (cross_pattern_hole_size * 2)),
             int(base_height / (cross_pattern_hole_size * 2)))
-    .rect(cross_pattern_hole_size, cross_pattern_hole_size, centered=True)
+    .rect(cross_pattern_hole_size + 2 * tol, cross_pattern_hole_size + 2 * tol, centered=True)
     .cutThruAll()
 )
 
 show_object(holder, "detergent-holder")
 
-# cq.exporters.export(holder, "detergent-holder.stl")
+cq.exporters.export(holder, "detergent-holder.stl")
