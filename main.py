@@ -13,16 +13,19 @@ wall = wall_min * 6  # Recommended width for most walls of this print
 eps = 1e-5  # A small number
 
 # Measurements of the rotating arm it will be attached to
-arm_size = cq.Vector(47, 60, 12)
+arm_size = cq.Vector(47, 60, 12.5)
 
 holder_height = 40  # Total depth of the device to be attached to the rotating arm
 holder_max_volume = 40  # In milliliters (== cm^3)
 holder_volume_marks = [20, 30]  # In milliliters (== cm^3)
 
 connector_stick_width = 4 * wall
-connector_dimensions = cq.Vector(4, 4)
+connector_dimensions = cq.Vector(3.5, 4)
 connector_limit_depth = cq.Vector(4, 6)
 cross_pattern_hole_size = 1.5 if os.getenv('final_build') else 7  # 1.5 mm is SLOW but needed
+
+reinforcement_size = cq.Vector(wall, 15)
+reinforcement_overlap = 2 * wall
 
 # ================== MODELLING ==================
 
@@ -80,7 +83,8 @@ holder = (
     .rect(connector_dimensions.y, connector_stick_width)
     .extrude(-connector_dimensions.x)
     # Chamfer the connection for easier insertion and printing
-    .edges("|Y").edges("<<X[2] or >>X[2]").edges("<Z").chamfer(connector_dimensions.y - eps, connector_dimensions.x - 100*eps)
+    .edges("|Y").edges("<<X[2] or >>X[2]").edges("<Z").chamfer(connector_dimensions.y - eps,
+                                                               connector_dimensions.x - 100 * eps)
     # Add a bottom limit to the connection
     .faces(">Z")
     .workplane(offset=-arm_size.z - connector_dimensions.x / 2)
@@ -139,6 +143,18 @@ holder = (
     .rect(cross_pattern_hole_size + 2 * tol, cross_pattern_hole_size + 2 * tol, centered=True)
     .cutThruAll()
 )
+
+# Add reinforcements to the sticks for the connection to the rotating arm
+assert reinforcement_overlap < reinforcement_size.y
+for y_flip in [-1, 1]:
+    holder += (
+        cq.Workplane("YZ", origin=((arm_size.x / 2 + wall * 1.5) * y_flip, 0, base_height - reinforcement_overlap))
+        .moveTo(arm_size.y / 2 - wall - volume_marks_size / 4, 0)
+        .line(-arm_size.y + wall * 2 + volume_marks_size / 2, 0)
+        .vertices()
+        .box(volume_marks_size / 2, reinforcement_size.y, reinforcement_size.x, centered=(True, False, True))
+        .edges("|Y").edges("<X" if y_flip == -1 else ">X").chamfer(reinforcement_size.x - eps)
+    )
 
 show_object(holder, "detergent-holder")
 
