@@ -9,17 +9,18 @@ import cadquery as cq
 # 3D printing basics
 tol = 0.2  # Tolerance
 wall_min = 0.4  # Minimum wall width
-wall = wall_min * 7  # Recommended width for most walls of this print
+wall = wall_min * 6  # Recommended width for most walls of this print
 eps = 1e-5  # A small number
 
 # Measurements of the rotating arm it will be attached to
-arm_size = cq.Vector(47, 60, 15)
+arm_size = cq.Vector(47, 60, 12)
 
 holder_height = 40  # Total depth of the device to be attached to the rotating arm
 holder_max_volume = 40  # In milliliters (== cm^3)
 holder_volume_marks = [20, 30]  # In milliliters (== cm^3)
 
-connector_dimensions = cq.Vector(4, 1.5)
+connector_stick_width = 4 * wall
+connector_dimensions = cq.Vector(4, 4)
 connector_limit_depth = cq.Vector(4, 6)
 cross_pattern_hole_size = 1.5 if os.getenv('final_build') else 7  # 1.5 mm is SLOW but needed
 
@@ -66,27 +67,27 @@ holder = (
     # Add the 4 corner sticks for the connection to the rotating arm
     .faces(">Z")
     .workplane()
-    .rect(arm_size.x + wall, arm_size.y - 2 * wall + wall, centered=True, forConstruction=True)
+    .rect(arm_size.x + wall, arm_size.y - connector_stick_width, centered=True, forConstruction=True)
     .vertices()
-    .rect(wall, wall, centered=True)
+    .rect(wall, connector_stick_width, centered=True)
     .extrude(holder_height - base_height + connector_dimensions.x / 2)
     # Add connection to the rotating arm
     .faces(">Z")
     .workplane()
-    .rect(arm_size.x - connector_dimensions.y, arm_size.y - 2 * wall + wall,
+    .rect(arm_size.x - connector_dimensions.y, arm_size.y - connector_stick_width,
           centered=True, forConstruction=True)
     .vertices()
-    .rect(connector_dimensions.y, wall)
+    .rect(connector_dimensions.y, connector_stick_width)
     .extrude(-connector_dimensions.x)
     # Chamfer the connection for easier insertion and printing
-    .edges("|Y").edges("<<X[2] or >>X[2]").chamfer(connector_dimensions.y - eps, connector_dimensions.x / 2 - eps)
+    .edges("|Y").edges("<<X[2] or >>X[2]").edges("<Z").chamfer(connector_dimensions.y - eps, connector_dimensions.x - 100*eps)
     # Add a bottom limit to the connection
     .faces(">Z")
     .workplane(offset=-arm_size.z - connector_dimensions.x / 2)
-    .rect(arm_size.x - connector_limit_depth.x, arm_size.y - 2 * wall + wall,
+    .rect(arm_size.x - connector_limit_depth.x, arm_size.y - connector_stick_width,
           centered=True, forConstruction=True)
     .vertices()
-    .rect(connector_limit_depth.x, wall)
+    .rect(connector_limit_depth.x, connector_stick_width)
     .extrude(-connector_limit_depth.y)
     # Chamfer the bottom for easier printing
     .edges("|Y").edges("<<X[3] or >>X[3]").edges("<Z").chamfer(
