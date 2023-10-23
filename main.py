@@ -127,9 +127,9 @@ holder = (
     # - On the left and right sides
     .faces("<X")
     .workplane()
-    .transformed(offset=(0, (base_height + wall) / 2))
+    .transformed(offset=(0, base_height / 2 + wall_min * 2))
     .rarray(cross_pattern_hole_size * 2, cross_pattern_hole_size * 2,
-            int((arm_size.y - wall * 2 - volume_marks_size * 2) / (cross_pattern_hole_size * 2)),
+            int((arm_size.y - wall * 2 - volume_marks_size) / (cross_pattern_hole_size * 2)),
             int(base_height / (cross_pattern_hole_size * 2)))
     .rect(cross_pattern_hole_size + 2 * tol, cross_pattern_hole_size + 2 * tol, centered=True)
     .cutThruAll()
@@ -138,7 +138,7 @@ holder = (
     .workplane()
     .transformed(offset=(arm_size.x / 2 + wall, 0))
     .rarray(cross_pattern_hole_size * 2, cross_pattern_hole_size * 2,
-            int((arm_size.x - volume_marks_size * 2) / (cross_pattern_hole_size * 2)),
+            int((arm_size.x - volume_marks_size) / (cross_pattern_hole_size * 2)),
             int(base_height / (cross_pattern_hole_size * 2)))
     .rect(cross_pattern_hole_size + 2 * tol, cross_pattern_hole_size + 2 * tol, centered=True)
     .cutThruAll()
