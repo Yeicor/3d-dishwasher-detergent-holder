@@ -13,7 +13,7 @@ wall = wall_min * 6  # Recommended width for most walls of this print
 eps = 1e-5  # A small number
 
 # Measurements of the rotating arm it will be attached to
-arm_size = cq.Vector(49, 60, 12.5)
+arm_size = cq.Vector(48, 60, 12.5)
 
 holder_height = 40  # Total depth of the device to be attached to the rotating arm
 holder_max_volume = 40  # In milliliters (== cm^3)
