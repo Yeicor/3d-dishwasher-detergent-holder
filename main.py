@@ -41,7 +41,7 @@ dishwasher_arm = (
     .faces(">Z").circle(arm_size.x / 2 - 3).extrude(2)  # Top of the arm
     .edges("<<Z[2]").edges("<<X[2] and <<Y[2]").fillet(wall_min)  # Fillet the edges
 )
-# debug(dishwasher_arm, "dishwasher-rotating-arm")
+debug(dishwasher_arm, "dishwasher-rotating-arm")
 
 # Liquid area
 # Compute the height of the base
