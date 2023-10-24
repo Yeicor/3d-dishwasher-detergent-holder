@@ -13,7 +13,7 @@ wall = wall_min * 6  # Recommended width for most walls of this print
 eps = 1e-5  # A small number
 
 # Measurements of the rotating arm it will be attached to
-arm_size = cq.Vector(47, 60, 12.5)
+arm_size = cq.Vector(49, 60, 12.5)
 
 holder_height = 40  # Total depth of the device to be attached to the rotating arm
 holder_max_volume = 40  # In milliliters (== cm^3)
@@ -24,7 +24,7 @@ connector_dimensions = cq.Vector(3.5, 4)
 connector_limit_depth = cq.Vector(4, 6)
 cross_pattern_hole_size = 1.5 if os.getenv('final_build') else 7  # 1.5 mm is SLOW but needed
 
-reinforcement_size = cq.Vector(wall, 15)
+reinforcement_size = cq.Vector(wall, 20)
 reinforcement_overlap = 2 * wall
 
 # ================== MODELLING ==================
@@ -41,7 +41,7 @@ dishwasher_arm = (
     .faces(">Z").circle(arm_size.x / 2 - 3).extrude(2)  # Top of the arm
     .edges("<<Z[2]").edges("<<X[2] and <<Y[2]").fillet(wall_min)  # Fillet the edges
 )
-debug(dishwasher_arm, "dishwasher-rotating-arm")
+# debug(dishwasher_arm, "dishwasher-rotating-arm")
 
 # Liquid area
 # Compute the height of the base
@@ -83,8 +83,8 @@ holder = (
     .rect(connector_dimensions.y, connector_stick_width)
     .extrude(-connector_dimensions.x)
     # Chamfer the connection for easier insertion and printing
-    .edges("|Y").edges("<<X[2] or >>X[2]").edges("<Z").chamfer(connector_dimensions.y - eps,
-                                                               connector_dimensions.x - 100 * eps)
+    .edges("|Y").edges("<<X[2] or >>X[2]").edges("<Z").chamfer(
+        connector_dimensions.y - eps, connector_dimensions.x - 100 * eps)
     # Add a bottom limit to the connection
     .faces(">Z")
     .workplane(offset=-arm_size.z - connector_dimensions.x / 2)
@@ -96,6 +96,14 @@ holder = (
     # Chamfer the bottom for easier printing
     .edges("|Y").edges("<<X[3] or >>X[3]").edges("<Z").chamfer(
         connector_limit_depth.x - eps, connector_limit_depth.y - eps)
+    # Increase support for the sticks
+    .faces(">Z")
+    .workplane(offset=-arm_size.z - connector_dimensions.x / 2)
+    .rect(arm_size.x - connector_dimensions.x, arm_size.y - wall,
+          centered=True, forConstruction=True)
+    .vertices()
+    .rect(connector_dimensions.x, wall)
+    .extrude(-(holder_height - base_height - arm_size.z))
 )
 
 # Add the volume marks
