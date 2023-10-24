@@ -162,6 +162,7 @@ for y_flip in [-1, 1]:
         .vertices()
         .box(volume_marks_size / 2, reinforcement_size.y, reinforcement_size.x, centered=(True, False, True))
         .edges("|Y").edges("<X" if y_flip == -1 else ">X").chamfer(reinforcement_size.x - eps)
+        .faces("<X" if y_flip == -1 else ">X").fillet(volume_marks_size/4 - eps)
     )
 
 show_object(holder, "detergent-holder")
